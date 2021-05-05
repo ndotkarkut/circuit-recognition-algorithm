@@ -1,10 +1,11 @@
 [
 {
  "frame_id":1, 
- "filename":"/home/nkkar/senior-design/darknet-master/circuit2.jpg", 
+ "filename":"/home/nkkar/senior-design/circuit-recognition-algorithm/circuit4.png", 
  "objects": [ 
-  {"class_id":0, "name":"Battery", "relative_coordinates":{"center_x":0.264895, "center_y":0.561327, "width":0.231422, "height":0.675523}, "confidence":0.772759}, 
-  {"class_id":0, "name":"Battery", "relative_coordinates":{"center_x":0.662062, "center_y":0.500700, "width":0.350451, "height":0.834076}, "confidence":0.361240}
+  {"class_id":0, "name":"Resistor", "relative_coordinates":{"center_x":0.664080, "center_y":0.488524, "width":0.050723, "height":0.243052}, "confidence":0.999653}, 
+  {"class_id":0, "name":"Resistor", "relative_coordinates":{"center_x":0.859255, "center_y":0.486993, "width":0.054892, "height":0.236348}, "confidence":0.999529}, 
+  {"class_id":0, "name":"Resistor", "relative_coordinates":{"center_x":0.467549, "center_y":0.485065, "width":0.052436, "height":0.239159}, "confidence":0.999180}
  ] 
 }
 ]

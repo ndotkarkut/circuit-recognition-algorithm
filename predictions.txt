@@ -1,0 +1,14 @@
+ GPU isn't used 
+mini_batch = 1, batch = 64, time_steps = 1, train = 0 
+nms_kind: greedynms (1), beta = 0.600000 
+nms_kind: greedynms (1), beta = 0.600000 
+nms_kind: greedynms (1), beta = 0.600000 
+
+ seen 64, trained: 256 K-images (4 Kilo-batches_64) 
+ Detection layer: 139 - type = 28 
+ Detection layer: 150 - type = 28 
+ Detection layer: 161 - type = 28 
+/home/nkkar/senior-design/circuit-recognition-algorithm/circuit4.png: Predicted in 21945.861000 milli-seconds.
+Resistor: 100%	(left_x:  169   top_y:   64   width:   20   height:   42)
+Resistor: 100%	(left_x:  244   top_y:   64   width:   19   height:   43)
+Resistor: 100%	(left_x:  318   top_y:   65   width:   21   height:   41)

@@ -9,6 +9,7 @@
 *.dll
 *.lib
 *.dylib
+*.weights
 mnist/
 data/
 caffe/
@@ -23,7 +24,7 @@ build/darknet/*
 build_*/
 !build/darknet/YoloWrapper.cs
 .fuse*
-*.weights
+#*.weights
 build/*.cmake
 build/*.ninja
 build/*.txt

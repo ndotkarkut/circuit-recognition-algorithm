@@ -43,13 +43,19 @@ def run_proc():
     global prediction_img
 
     if browseFile != None:
-        yolo_process = ['./darknet', 'detector', 'test', 'objsenior.data', 'yolov4-objsenior.cfg',
-                        'yolov4-objsenior_last.weights', '-dont_show', '-ext_output', '-out', 'results.json', str(browseFile)]
+        yolo_process = ['./darknet', 'detector', 'test', 'objsenior_new.data', 'yolov4-objsenior_new.cfg',
+                        'yolov4-objsenior_last_new.weights', '-dont_show', '-ext_output', '-out', 'results.json', str(browseFile)]
 
         # result = subprocess.run([sys.executable, "-c", "print('ocean')"])
         result = subprocess.run(yolo_process, check=True,
-                                cwd='..')
+                                cwd='..', stdout=subprocess.PIPE)
+        
+        # write result into output file to be used for finding the recognized boxes 
+        with open('../predictions.txt', 'w') as out_file:
+            out_file.write(result.stdout.decode())
 
+        # print(result.stdout)
+        
         raw_img = cv2.imread('../predictions.jpg')
         x_dim, y_dim, z_dim = raw_img.shape
 
