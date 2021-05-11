@@ -181,12 +181,12 @@ def find_neighbors(neighbor_dict):
         neighbor_array.append(neighbor)
         
     return neighbor_array
-    
-            
-def node_enumeration(neighbor_info, cmp_locations):
+      
+def node_enumeration(neighbor_info, cmp_locations, resistor_dimensions):
     # print(cmp_locations)
     # print('neighbor info: ', neighbor_info) 
     nodes = {}
+    cmp_nodes = []
     for i in list(neighbor_info.keys()):
         nodes[i] = None 
     # print(nodes)
@@ -213,13 +213,13 @@ def node_enumeration(neighbor_info, cmp_locations):
         # continue
 
         for neighbor in neighbors:
-            # print(neighbor)
+            print(neighbor)
             neighbor_x = neighbor[0]
             neighbor_y = neighbor[1]
-            
             cmp_exists = False
             
             for cmp_loc in cmp_locations:
+                # print(cmp_loc)
                 # find center of component 
                 # cmp_ctr = ()
                 
@@ -240,6 +240,9 @@ def node_enumeration(neighbor_info, cmp_locations):
                 # print(np.any(x_result), np.any(y_result))
                 
                 if np.any(x_result) and np.any(y_result):
+                    if cmp_loc in resistor_dimensions:
+                        cmp_nodes.append((get_key(neighbor_info, neighbor_info[node][0]), get_key(neighbor_info, neighbor)))
+                    
                     cmp_exists = True 
                     coords = (int(neighbor[0]), int(neighbor[1]))
                     cv2.circle(loop_detection_img, coords, 5, (0, 0, 255), -1)
@@ -264,12 +267,91 @@ def node_enumeration(neighbor_info, cmp_locations):
             # break
     
         i += 1
-            
-    print(nodes)
-
+         
+    # get rid of duplicate node pairings for resistor nodes        
+    resistor_nodes = clean_res_nodes(cmp_nodes)
     
-        
+    # convert the numbers in resistor nodes to the node numbers 
+    # we assigned based on the circuit configuration
+    # used to tell if it is series or parallel circuit
+    final_res_node_nums, final_res_node_str = apply_num_to_node(resistor_nodes, nodes)
+                
+    print(cmp_nodes)        
+    print(nodes)
+    print(final_res_node_nums)
+    
+    parallel_amount, series_amount = count_parallel_and_series(final_res_node_str)
+    
+    print(parallel_amount, series_amount)
+    
+    return (parallel_amount, series_amount)
 
+def count_parallel_and_series(final_node_vals):
+    '''
+    function for finding out how many series resistors and 
+    how many parallel resistors are found in each circuit
+    '''
+    print(final_node_vals)
+    occurence_dict = {}
+    # dict for holding # of occurences of each instance
+    for node_val in final_node_vals:
+        # count num of instances
+        count = final_node_vals.count(node_val)
+        
+        if node_val not in occurence_dict:
+            occurence_dict[node_val] = 1
+        else:
+            occurence_dict[node_val] += 1
+                
+    print(occurence_dict)
+            
+    # length of dictionary decides how many resistors in series there are
+    # non-one values for keys means there are resistors in parallel
+    
+    num_of_series = len(occurence_dict)
+    num_of_parallel = [value for key, value in occurence_dict.items()]
+    
+    return num_of_parallel, num_of_series
+            
+def apply_num_to_node(resistor_nodes, node_numbers):
+    ''' change the default intersection numbers into circuit nodes
+    so we can tell if they are series or parallel resistors
+    '''
+    final_node_numbers = []
+    final_node_strings = []
+    for res_node in resistor_nodes:
+        # node_0 is node on one side of the component
+        # node_1 is node on other side of the component
+        node_0 = res_node[0]
+        node_1 = res_node[1] 
+        # we then re-assign whatever these values are to the new values
+        # i.e. (0,4) => (0,1) ; (3,7) => (0,1)
+        new_node_0 = node_numbers[node_0]
+        new_node_1 = node_numbers[node_1]
+        
+        final_node_numbers.append((new_node_0, new_node_1))
+        final_node_strings.append((str(new_node_0) + '_' + str(new_node_1)))
+        
+    return final_node_numbers, final_node_strings   
+    
+def clean_res_nodes(node_arr):
+    '''
+    get rid of duplicate nodes in our array that tracks which lines 
+    have resistors/components in between them
+    ''' 
+    clean_array = []
+    for node_a in node_arr:
+        for node_b in node_arr:
+            if node_a != node_b:
+                if len(set(node_a) & set(node_b)) != 2 and sorted(node_a) not in clean_array:
+                    clean_array.append(sorted(node_a))
+
+    # return the array elements back in tuple form
+    return_array = []
+    for arr in clean_array:
+        return_array.append(tuple(arr))
+    print(return_array)
+    return return_array
 
 # images = ['../circuit4.png', '../predictions.jpg']
 images = ['../circuit4.png']
@@ -286,6 +368,7 @@ for image in images:
     detections = parse_predictions()
     
     cmp_dims = []
+    res_dims = []
     # manually adding the battery for node quantifying
     cmp_dims.append((57-10, 84-20, 20, 42))
     
@@ -295,7 +378,8 @@ for image in images:
         width = int(component['width'])
         height = int(component['height'])
         # print(left_x, top_y, width, height)
-        
+        #TODO: make a way to distinguish between resistors and batteries
+        res_dims.append((left_x, top_y, width, height))
         cmp_dims.append((left_x, top_y, width, height))
         
         top_left = (left_x, top_y)
@@ -327,13 +411,9 @@ for image in images:
         cv2.imshow('gray', gray_img)
         cv2.imshow('thresh', thresh)
         cv2.imshow('thresh_edges', thresh_edges)
-        
-        # find contours in the thresholded image and init the shape detector
-        cnts = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        cnts = imutils.grab_contours(cnts)
-        # print(cnts)
 
-    
+        # END OF FOR-LOOP
+
     # generate the lines using Houghlines
     lines = cv2.HoughLinesP(thresh_edges.copy(), 1, np.pi/180, 75,
                     minLineLength=5, maxLineGap=45)
@@ -378,8 +458,17 @@ for image in images:
     neighbor_info = find_intersection_neighbors(intersect_info)
     
     
-    # FIND OUT NODE NUMBERS 
-    nodes = node_enumeration(neighbor_info, cmp_dims)
+    # FIND OUT SERIES AND PARALLEL AMOUNT
+    parallel_amt, series_amt = node_enumeration(neighbor_info, cmp_dims, res_dims)
+        
+    
+    # PRINT RESULT TO SCREEN
+    if len(parallel_amt) != 0:
+        for amount in parallel_amt:
+            print(f'THERE IS 1 SERIES OF {amount} RESISTORS IN PARALLEL')
+            print(f'{series_amt} SERIES IN TOTAL')
+    else:
+        print(f'NO PARALLEL COMPONENTS, JUST {series_amt} COMPONENTS IN SERIES')    
         
     cv2.imshow(f'loop detection img {i}', loop_detection_img)
     # cv2.imshow(f'Image {i}', img)
