@@ -213,7 +213,7 @@ def node_enumeration(neighbor_info, cmp_locations, resistor_dimensions):
         # continue
 
         for neighbor in neighbors:
-            print(neighbor)
+            # print(neighbor)
             neighbor_x = neighbor[0]
             neighbor_y = neighbor[1]
             cmp_exists = False
@@ -255,11 +255,21 @@ def node_enumeration(neighbor_info, cmp_locations, resistor_dimensions):
             if cmp_exists:
                 neighbor_node_num = get_key(neighbor_info, neighbor)
                 if nodes[neighbor_node_num] == None:
-                    nodes[neighbor_node_num] = nodes[i] + 1
+                    if nodes[i] == None:
+                        addend = max([n for n in nodes.values() if n != None])
+                        print('addend', addend)
+                        nodes[neighbor_node_num] = addend + 1
+                    else:
+                        nodes[neighbor_node_num] = nodes[i] + 1
             else:
                 neighbor_node_num = get_key(neighbor_info, neighbor)
                 if nodes[neighbor_node_num] == None:
-                    nodes[neighbor_node_num] = nodes[i]
+                    if nodes[i] == None:
+                        addend = max([n for n in nodes.values() if n != None])
+                        print('addend', addend)
+                        nodes[neighbor_node_num] = addend + 1
+                    else:
+                        nodes[neighbor_node_num] = nodes[i] + 1
                 else:
                     nodes[neighbor_node_num] = nodes[i]
                     
@@ -291,7 +301,7 @@ def count_parallel_and_series(final_node_vals):
     function for finding out how many series resistors and 
     how many parallel resistors are found in each circuit
     '''
-    print(final_node_vals)
+    # print(final_node_vals)
     occurence_dict = {}
     # dict for holding # of occurences of each instance
     for node_val in final_node_vals:
@@ -353,8 +363,155 @@ def clean_res_nodes(node_arr):
     print(return_array)
     return return_array
 
+def clean_lines(line_array, img_shape, line_type):
+    print(img_shape)
+    '''
+    function for getting rid of duplicate lines that are found in
+    the Houghline transform when they are really the same line
+    ''' 
+    # bounds lines have to be within to be considered the same line
+    x_bounds = int(img_shape[0] * 0.1)
+    y_bounds = int(img_shape[1] * 0.1)
+    
+    clean_array = []
+    i = 0
+    
+    for line in line_array:
+        if i == 0:
+            clean_array.append(line)
+        else:
+            # if all 4 facts are true, it means its the same line
+            # thus, if same_line == 4, then it is same line and not added
+            # if one line is not the same line but is held within the line 
+            # we also remove it
+            add_to_clean_array = True
+            clean_line_idx = 0
+            for clean_line in clean_array:
+                same_line = 0
+                in_line = False
+                # checking if it is SAME_LINE
+                if line[0] in range(clean_line[0] - x_bounds, clean_line[0] + x_bounds):
+                    print('line0')
+                    same_line += 1
+                if line[1] in range(clean_line[1] - y_bounds, clean_line[1] + y_bounds):
+                    print('line1')
+                    same_line += 1
+                if line[2] in range(clean_line[2] - x_bounds, clean_line[2] + x_bounds):
+                    print('line2')
+                    same_line += 1
+                if line[3] in range(clean_line[3] - y_bounds, clean_line[3] + y_bounds):
+                    print('line3')
+                    same_line += 1
+                    
+                if same_line == 4:
+                    add_to_clean_array = False
+                    
+                # # checking if it is IN_LINE
+                # if line_type == 'horizontal':
+                #     if (
+                #         line[1] in range(clean_line[1] - y_bounds, clean_line[1] + y_bounds) and 
+                #         line[3] in range(clean_line[3] - y_bounds, clean_line[3] + y_bounds)
+                #     ):
+                #         # if line we are testing is in between our already clean line
+                #         # then we do not add to array by setting add_to_clean_array = False
+                #         if (
+                #             clean_line[0] <= line[0] <= clean_line[2] and 
+                #             clean_line[0] <= line[2] <= clean_line[2]
+                #         ):
+                #             add_to_clean_array = False 
+                #         # if line we are testing encapsulates the clean line then we
+                #         # replace the clean line with this one
+                #         elif (
+                #             line[0] <= clean_line[0] <= line[2] and 
+                #             line[0] <= clean_line[2] <= line[2]                            
+                #         ): 
+                #             continue
+                
+                # clean_line_idx += 1            
+            
+            if add_to_clean_array:
+                clean_array.append(line)
+                
+        i += 1
+        
+    if line_type == 'vertical':
+        print(clean_array)
+    
+    indices_to_remove = []
+    for line in clean_array:
+        clean_line_idx = 0
+        for clean_line in clean_array:
+            # if one line is not the same line but is held within the line 
+            # we also remove it
+            # checking if it is IN_LINE
+            if line_type == 'horizontal':
+                if (
+                    line[1] in range(clean_line[1] - y_bounds, clean_line[1] + y_bounds) and 
+                    line[3] in range(clean_line[3] - y_bounds, clean_line[3] + y_bounds)
+                ):
+                    # if line we are testing is in between our already clean line
+                    # then we do not add to array by setting add_to_clean_array = False
+                    if (
+                        clean_line[0] <= line[0] <= clean_line[2] and 
+                        clean_line[0] <= line[2] <= clean_line[2]
+                    ):
+                        pass
+                    # if line we are testing encapsulates the clean line then we
+                    # replace the clean line with this one
+                    elif (
+                        line[0] - x_bounds <= clean_line[0] <= line[2] + x_bounds and 
+                        line[0] - x_bounds <= clean_line[2] <= line[2] + x_bounds                            
+                    ): 
+                        if (list(line) != list(clean_line)):
+                            indices_to_remove.append(clean_line_idx)
+                    elif (
+                        line[0] + x_bounds >= clean_line[0] >= line[2] - x_bounds and 
+                        line[0] + x_bounds >= clean_line[2] >= line[2] - x_bounds                            
+                    ): 
+                        if (list(line) != list(clean_line)):
+                            indices_to_remove.append(clean_line_idx)
+  
+            elif line_type == 'vertical':
+                if (
+                    line[0] in range(clean_line[0] - x_bounds, clean_line[0] + x_bounds) and 
+                    line[2] in range(clean_line[2] - x_bounds, clean_line[2] + x_bounds)
+                ):
+                    # if line we are testing is in between our already clean line
+                    # then we do not add to array by setting add_to_clean_array = False
+                    print(clean_line, line)
+                    if (
+                        clean_line[1] <= line[1] <= clean_line[3] and 
+                        clean_line[1] <= line[3] <= clean_line[3]
+                    ):
+                        pass
+                    # if line we are testing encapsulates the clean line then we
+                    # replace the clean line with this one
+                    elif (
+                        line[1] - y_bounds <= clean_line[1] <= line[3] + y_bounds and 
+                        line[1] - y_bounds <= clean_line[3] <= line[3] + y_bounds                            
+                    ): 
+                        if (list(line) != list(clean_line)):
+                            indices_to_remove.append(clean_line_idx)
+                    elif (
+                        line[1] + y_bounds >= clean_line[1] >= line[3] - y_bounds and 
+                        line[1] + y_bounds >= clean_line[3] >= line[3] - y_bounds                            
+                    ): 
+                        if (list(line) != list(clean_line)):
+                            indices_to_remove.append(clean_line_idx)
+
+            clean_line_idx += 1       
+         
+    print('##############################################\n')
+    print('6,',indices_to_remove)
+    for idx in sorted(indices_to_remove, reverse=True):
+        clean_array.pop(idx)
+        
+    print(clean_array)
+    return clean_array
+
+
 # images = ['../circuit4.png', '../predictions.jpg']
-images = ['../circuit4.png']
+images = ['../circuit5.png']
 
 i = 0
 for image in images:
@@ -404,7 +561,8 @@ for image in images:
         # create an edge detection image
         edges = cv2.Canny(gray_img, 75, 100)
         # create a threshold image
-        thresh = cv2.threshold(gray_img, 150, 255, cv2.THRESH_BINARY)[1]
+        # thresh = cv2.threshold(gray_img, 150, 255, cv2.THRESH_BINARY)[1]
+        thresh = cv2.threshold(gray_img, 170, 255, cv2.THRESH_BINARY)[1]
         # edges of threshold image lol
         thresh_edges = cv2.Canny(thresh, 75, 100)
         
@@ -418,13 +576,13 @@ for image in images:
     lines = cv2.HoughLinesP(thresh_edges.copy(), 1, np.pi/180, 75,
                     minLineLength=5, maxLineGap=45)
     
-    # print(len(lines))
+    print('number of lines:', len(lines))
     horizontal_lines = []
     vertical_lines = []
     # add lines to image
     for line in lines:
         x1, y1, x2, y2 = line[0]
-        
+        # print(line[0])
         # check if line is vertical or horizontal
         # x distance > y distance = horizontal line
         # y distance > x distance = vertical line
@@ -434,12 +592,19 @@ for image in images:
         else:
             cv2.line(loop_det_img_copy, (x1, y1), (x2, y2), (0, 0, 255), 1)
             vertical_lines.append(line[0])
+            
+    # get rid of duplicate lines that are basically the same line
+    horizontal_lines = clean_lines(horizontal_lines, img.shape, 'horizontal')
+    vertical_lines = clean_lines(vertical_lines, img.shape, 'vertical')
     
     cv2.imshow('loop_det', loop_det_img_copy)
 
     intersect_coords = []
     intersect_info = []
     # find intersections 
+    
+    print('horizontal:', len(horizontal_lines))
+    print('vertical', len(vertical_lines))
     
     for horizontal_line in horizontal_lines:
         for vertical_line in vertical_lines:
