@@ -43,8 +43,10 @@ def run_proc():
     global prediction_img
 
     if browseFile != None:
+        # yolo_process = ['./darknet', 'detector', 'test', 'objsenior2.data', 'yolov4-objsenior2.cfg',
+        #                 'yolov4-objsenior2_1000.weights', '-dont_show', '-ext_output', '-out', 'results.json', str(browseFile)]
         yolo_process = ['./darknet', 'detector', 'test', 'objsenior_new.data', 'yolov4-objsenior_new.cfg',
-                        'yolov4-objsenior_last_new.weights', '-dont_show', '-ext_output', '-out', 'results.json', str(browseFile)]
+                        'yolov4-objsenior_last_new2.weights', '-dont_show', '-ext_output', '-out', 'results.json', str(browseFile)]
 
         # result = subprocess.run([sys.executable, "-c", "print('ocean')"])
         result = subprocess.run(yolo_process, check=True,

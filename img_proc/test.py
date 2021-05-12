@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import json
 import imutils
+from numpy.core.fromnumeric import nonzero
 from shapedetector import ShapeDetector
 
 def parse_predictions():
@@ -250,28 +251,78 @@ def node_enumeration(neighbor_info, cmp_locations, resistor_dimensions):
                 # break
                 # x_result = np.where(np.logical_and(cmp_x > node[0][0], cmp_x < neighbor[0][0]))
                 
+            # # assign the node a value of 1 more than current node if 
+            # # component exists between nodes    
+            # if cmp_exists:
+            #     neighbor_node_num = get_key(neighbor_info, neighbor)
+            #     if nodes[neighbor_node_num] == None:
+            #         if nodes[i] == None:
+            #             addend = max([n for n in nodes.values() if n != None])
+            #             print('addend', addend)
+            #             nodes[neighbor_node_num] = addend + 1
+            #         else:
+            #             nodes[neighbor_node_num] = nodes[i] + 1
+            # else:
+            #     neighbor_node_num = get_key(neighbor_info, neighbor)
+            #     if nodes[neighbor_node_num] == None:
+            #         if nodes[i] == None:
+            #             addend = max([n for n in nodes.values() if n != None])
+            #             print('addend', addend)
+            #             nodes[neighbor_node_num] = addend + 1
+            #         else:
+            #             nodes[neighbor_node_num] = nodes[i]
+            #     else:
+            #         nodes[neighbor_node_num] = nodes[i]
+            
+            #### EXPERIMENTAL BUT NOT YET
             # assign the node a value of 1 more than current node if 
-            # component exists between nodes    
+            # component exists between nodes  
+            # neighbor_node_num = get_key(neighbor_info, neighbor)  
+            # if cmp_exists:
+            #     if nodes[neighbor_node_num] == None:
+            #         if nodes[i] == None:
+            #             addend = max([n for n in nodes.values() if n != None])
+            #             print('addend', addend)
+            #             nodes[neighbor_node_num] = addend + 1
+            #         else:
+            #             nodes[neighbor_node_num] = nodes[i] + 1
+            # else:
+            #     if nodes[neighbor_node_num] == None:
+            #         if nodes[i] == None:
+            #             addend = max([n for n in nodes.values() if n != None])
+            #             print('addend', addend)
+            #             nodes[neighbor_node_num] = addend + 1
+            #         else:
+            #             nodes[neighbor_node_num] = nodes[i]
+            #     else:
+            #         nodes[neighbor_node_num] = nodes[i]
+                    
+            neighbor_node_num = get_key(neighbor_info, neighbor)
             if cmp_exists:
-                neighbor_node_num = get_key(neighbor_info, neighbor)
-                if nodes[neighbor_node_num] == None:
-                    if nodes[i] == None:
-                        addend = max([n for n in nodes.values() if n != None])
-                        print('addend', addend)
-                        nodes[neighbor_node_num] = addend + 1
-                    else:
-                        nodes[neighbor_node_num] = nodes[i] + 1
+                if nodes[neighbor_node_num] == None and nodes[i] == None:
+                    pass 
+                elif nodes[neighbor_node_num] != None and nodes[i] == None:
+                    nodes[i] = nodes[neighbor_node_num] + 1
+                elif nodes[neighbor_node_num] == None and nodes[i] != None:
+                    nodes[neighbor_node_num] = nodes[i] + 1
+                elif nodes[neighbor_node_num] != None and nodes[i] != None:
+                    pass 
             else:
-                neighbor_node_num = get_key(neighbor_info, neighbor)
-                if nodes[neighbor_node_num] == None:
-                    if nodes[i] == None:
-                        addend = max([n for n in nodes.values() if n != None])
-                        print('addend', addend)
-                        nodes[neighbor_node_num] = addend + 1
-                    else:
-                        nodes[neighbor_node_num] = nodes[i] + 1
-                else:
+                if nodes[neighbor_node_num] == None and nodes[i] == None:
+                    pass 
+                elif nodes[neighbor_node_num] != None and nodes[i] == None:
+                    nodes[i] = nodes[neighbor_node_num]
+                elif nodes[neighbor_node_num] == None and nodes[i] != None:
                     nodes[neighbor_node_num] = nodes[i]
+                elif nodes[neighbor_node_num] != None and nodes[i] != None:
+                    # if there is no component between them and theyre different nodes
+                    # we make them the same // the higher number
+                    if nodes[neighbor_node_num] != nodes[i]:
+                        if nodes[neighbor_node_num] > nodes[i]:
+                            nodes[i] = nodes[neighbor_node_num]
+                        else:
+                            nodes[neighbor_node_num] = nodes[i]
+                        
                     
         # if i == 3:
             # break
@@ -561,11 +612,16 @@ for image in images:
         # create an edge detection image
         edges = cv2.Canny(gray_img, 75, 100)
         # create a threshold image
-        # thresh = cv2.threshold(gray_img, 150, 255, cv2.THRESH_BINARY)[1]
-        thresh = cv2.threshold(gray_img, 170, 255, cv2.THRESH_BINARY)[1]
+        thresh = cv2.threshold(gray_img, 150, 255, cv2.THRESH_BINARY)[1]
+        # thresh = cv2.threshold(gray_img, 170, 255, cv2.THRESH_BINARY)[1]
         # edges of threshold image lol
         thresh_edges = cv2.Canny(thresh, 75, 100)
         
+        # check if threshold value of 170 works better and produces more lines
+        # threshold with more lines will be used
+        thresh_170 = cv2.threshold(gray_img, 170, 255, cv2.THRESH_BINARY)[1]
+        thresh_edges_170 = cv2.Canny(thresh_170, 75, 100)
+                
         cv2.imshow('gray', gray_img)
         cv2.imshow('thresh', thresh)
         cv2.imshow('thresh_edges', thresh_edges)
@@ -575,6 +631,12 @@ for image in images:
     # generate the lines using Houghlines
     lines = cv2.HoughLinesP(thresh_edges.copy(), 1, np.pi/180, 75,
                     minLineLength=5, maxLineGap=45)
+    
+    lines_170 = cv2.HoughLinesP(thresh_edges_170.copy(), 1, np.pi/180, 75,
+                    minLineLength=5, maxLineGap=45)
+    
+    if len(lines_170) > len(lines):
+        lines = lines_170
     
     print('number of lines:', len(lines))
     horizontal_lines = []
