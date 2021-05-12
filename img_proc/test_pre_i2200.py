@@ -197,7 +197,7 @@ def node_enumeration(neighbor_info, cmp_locations, resistor_dimensions):
         node_x = neighbor_info[node][0][0]
         node_y = neighbor_info[node][0][1]
         
-        coords = (int(node_x), int(node_y))
+        coords = (int(neighbor_info[node][0][0]), int(neighbor_info[node][0][1]))
         cv2.circle(loop_detection_img, coords, 5, (0, 255, 0), -1)
         
         # print(neighbor_info[node][0])
@@ -246,7 +246,7 @@ def node_enumeration(neighbor_info, cmp_locations, resistor_dimensions):
                     
                     cmp_exists = True 
                     coords = (int(neighbor[0]), int(neighbor[1]))
-                    # cv2.circle(loop_detection_img, coords, 5, (0, 0, 255), -1)
+                    cv2.circle(loop_detection_img, coords, 5, (0, 0, 255), -1)
 
                 # break
                 # x_result = np.where(np.logical_and(cmp_x > node[0][0], cmp_x < neighbor[0][0]))
@@ -322,24 +322,12 @@ def node_enumeration(neighbor_info, cmp_locations, resistor_dimensions):
                             nodes[i] = nodes[neighbor_node_num]
                         else:
                             nodes[neighbor_node_num] = nodes[i]
-                            
-            # coloring of the nodes
-            if nodes[i] == 0:
-                cv2.circle(loop_detection_img, (int(node_x), int(node_y)), 5, (0, 0, 255), -1)    
-                cv2.putText(loop_detection_img, str(nodes[i]), (int(node_x)-20, int(node_y)+20), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255), 1, cv2.LINE_AA)         
-            if nodes[i] == 1:
-                cv2.circle(loop_detection_img, (int(node_x), int(node_y)), 5, (0, 255, 0), -1)
-                cv2.putText(loop_detection_img, str(nodes[i]), (int(node_x)-20, int(node_y)+20), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 255, 0), 1, cv2.LINE_AA) 
-            if nodes[i] == 2:
-                cv2.circle(loop_detection_img, (int(node_x), int(node_y)), 5, (255, 0, 0), -1)
-                cv2.putText(loop_detection_img, str(nodes[i]), (int(node_x)-20, int(node_y)+20), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 0, 0), 1, cv2.LINE_AA) 
+                        
                     
         # if i == 3:
             # break
     
         i += 1
-        
-    
          
     # get rid of duplicate node pairings for resistor nodes        
     resistor_nodes = clean_res_nodes(cmp_nodes)
@@ -575,13 +563,7 @@ def clean_lines(line_array, img_shape, line_type):
 
 
 # images = ['../circuit4.png', '../predictions.jpg']
-# images = ['../circuit5.png']
-parser = argparse.ArgumentParser()
-
-parser.add_argument('-path', action="store", required=True)
-image_path = str(parser.parse_args().path)
-
-images = [image_path]
+images = ['../circuit5.png']
 
 
 
@@ -624,7 +606,7 @@ for image in images:
             cv2.line(loop_detection_img, (left_x + int(width / 2), top_y), (left_x + int(width / 2), top_y + height), (0,0,0), 2)
         
         loop_det_img_copy = loop_detection_img.copy()
-        # cv2.imshow('loop_det', loop_det_img_copy)
+        cv2.imshow('loop_det', loop_det_img_copy)
         # find lines of the wires on the circuits using HoughLinesP
         # first blur the image for smoother lines 
         loop_det_img_copy = cv2.GaussianBlur(loop_det_img_copy, (3,3), 0)
@@ -643,9 +625,9 @@ for image in images:
         thresh_170 = cv2.threshold(gray_img, 170, 255, cv2.THRESH_BINARY)[1]
         thresh_edges_170 = cv2.Canny(thresh_170, 75, 100)
                 
-        # cv2.imshow('gray', gray_img)
-        # cv2.imshow('thresh', thresh)
-        # cv2.imshow('thresh_edges', thresh_edges)
+        cv2.imshow('gray', gray_img)
+        cv2.imshow('thresh', thresh)
+        cv2.imshow('thresh_edges', thresh_edges)
 
         # END OF FOR-LOOP
 
@@ -680,7 +662,7 @@ for image in images:
     horizontal_lines = clean_lines(horizontal_lines, img.shape, 'horizontal')
     vertical_lines = clean_lines(vertical_lines, img.shape, 'vertical')
     
-    # cv2.imshow('loop_det', loop_det_img_copy)
+    cv2.imshow('loop_det', loop_det_img_copy)
 
     intersect_coords = []
     intersect_info = []
@@ -714,13 +696,11 @@ for image in images:
     if len(parallel_amt) != 0:
         for amount in parallel_amt:
             print(f'THERE IS 1 SERIES OF {amount} RESISTORS IN PARALLEL')
-        print(f'{series_amt} SERIES IN TOTAL')
+            print(f'{series_amt} SERIES IN TOTAL')
     else:
         print(f'NO PARALLEL COMPONENTS, JUST {series_amt} COMPONENTS IN SERIES')    
         
-    # cv2.imshow(f'loop detection img {i}', loop_detection_img)
-    cv2.imwrite('../finished_image.png', loop_detection_img)
-    
+    cv2.imshow(f'loop detection img {i}', loop_detection_img)
     # cv2.imshow(f'Image {i}', img)
 cv2.waitKey(0)
 cv2.destroyAllWindows()

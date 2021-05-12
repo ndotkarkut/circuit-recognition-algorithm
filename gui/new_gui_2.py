@@ -1,10 +1,14 @@
 from tkinter import *
 from PIL import ImageTk,Image
 from tkinter import filedialog
+import subprocess
+
+from numpy.core.fromnumeric import resize
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # FUNCTION DEFINITIONS
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+img_path = ''
 
 # Define the size of the main Window
 # And Ensure it's always in the middle
@@ -40,20 +44,23 @@ def upload():
     
     global raw_img,raw_img_label
     global process_image_button
+    global img_path
 
     filetypes = (("png","*.png"),("jpeg","*.jpg"),("bmp","*.bmp"),("all files","*.*"))
-    main.filename =  filedialog.askopenfilename(title = "Select an Image",filetypes = filetypes)
+    #main.filename =  filedialog.askopenfilename(title = "Select an Image",filetypes = filetypes)
+    img_path = filedialog.askopenfilename(title="Select an Image", filetypes=filetypes)
 
-    if main.filename:
+    # if main.filename:
+    if img_path:
         try:
             raw_img_label.grid_forget()
             process_image_button.grid_forget()
         except:
             pass   
 
-        raw_img = resize_image(Image.open(main.filename))
+        raw_img = resize_image(Image.open(img_path))
         raw_img = ImageTk.PhotoImage(raw_img)
-        raw_img_label = Label(image = raw_img)
+        raw_img_label = Label(main, image = raw_img)
         raw_img_label.grid(row = 1, column = 0,pady=20,sticky = "N")
 
         process_image_button = Button(main,text="Process the Image",padx = 48, bd = '10',activebackground = "#00FF00",bg="#FFFFFF",font=button_fonts, command = process)
@@ -61,31 +68,39 @@ def upload():
 
 # Runs through
 def process():
-    global raw_img1,raw_img_label1
+    global img_path
+    global final_image
+    global final_img_label, output_img_label
+    
+    print(img_path)
+    try:
+        final_img_label.grid_forget()
+        output_img_label.grid_forget()
+    except:
+        pass
+    
+    yolo_process = ['./darknet', 'detector', 'test', 'objsenior_new.data', 'yolov4-objsenior_new.cfg',
+                    'yolov4-objsenior_last_new2.weights', '-dont_show', '-ext_output', '-out', 'results.json', str(img_path)]
 
-
-    filetypes = (("png","*.png"),("jpeg","*.jpg"),("bmp","*.bmp"),("all files","*.*"))
-    main.filename =  filedialog.askopenfilename(title = "Select an Image",filetypes = filetypes)
-
-    if main.filename:
-        try:
-            raw_img_label1.grid_forget()
-        except:
-            pass   
-        win_width = main.winfo_width() 
-        win_height = main.winfo_height()
-        temp_img1 = ImageTk.PhotoImage(Image.open(main.filename))
-        img_width = temp_img1.width()
-        img_height = temp_img1.height()
-
-        raw_img1 = resize_image(Image.open(main.filename))
-        raw_img1 = ImageTk.PhotoImage(raw_img1)
-        # raw_img = ImageTk.PhotoImage(Image.open(main.filename))
-        raw_img_label1 = Label(image = raw_img1)
-        raw_img_label1.grid(row = 1, column = 1,pady=20,sticky = "N")
-        raw_img_label2 = Label(image = raw_img1)
-        raw_img_label2.grid(row = 2, column = 1,pady=20,sticky = "N")
- 
+    # result = subprocess.run([sys.executable, "-c", "print('ocean')"])
+    result = subprocess.run(yolo_process, check=True,
+                            cwd='..', stdout=subprocess.PIPE)
+    
+    # write result into output file to be used for finding the recognized boxes 
+    with open('../predictions.txt', 'w') as out_file:
+        out_file.write(result.stdout.decode())
+    
+    imaging_process = ['python3', '../img_proc/test.py', f'-path={img_path}']
+    
+    output = subprocess.run(imaging_process, cwd='.', check=True, stdout=subprocess.PIPE)
+    print(output.stdout.decode())
+    final_image = resize_image(Image.open("../finished_image.png"))
+    final_image = ImageTk.PhotoImage(final_image)
+    final_img_label = Label(main, image=final_image)
+    final_img_label.grid(row=1, column=1, pady=20, sticky="N")
+    
+    output_img_label = Label(main, text=output.stdout)
+    output_img_label.grid(row=2, column=1, pady=20, sticky="N")
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # CREATING MAIN WINDOW
@@ -93,7 +108,8 @@ def process():
 main = Tk()
 main.title("CRA: Circuit Recognition Algorithm")
 main.geometry(screen_geometry(950,800))
-main.iconbitmap("icons\\1.ico")
+# main.iconbitmap("./icons/2.ico")
+
 Grid.columnconfigure(main,0,weight=1)
 Grid.columnconfigure(main,1,weight=1)
 main.configure(bg='#A9A9A9')
