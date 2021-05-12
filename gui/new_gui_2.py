@@ -1,6 +1,7 @@
 from tkinter import *
 from PIL import ImageTk,Image
 from tkinter import filedialog
+import subprocess
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # FUNCTION DEFINITIONS
@@ -40,20 +41,22 @@ def upload():
     
     global raw_img,raw_img_label
     global process_image_button
+    global img_path
 
     filetypes = (("png","*.png"),("jpeg","*.jpg"),("bmp","*.bmp"),("all files","*.*"))
-    main.filename =  filedialog.askopenfilename(title = "Select an Image",filetypes = filetypes)
+    #main.filename =  filedialog.askopenfilename(title = "Select an Image",filetypes = filetypes)
+    img_path =  filedialog.askopenfilename(title = "Select an Image",filetypes = filetypes)
 
-    if main.filename:
+    if img_path:
         try:
             raw_img_label.grid_forget()
             process_image_button.grid_forget()
         except:
             pass   
 
-        raw_img = resize_image(Image.open(main.filename))
+        raw_img = resize_image(Image.open(img_path))
         raw_img = ImageTk.PhotoImage(raw_img)
-        raw_img_label = Label(image = raw_img)
+        raw_img_label = Label(main,image = raw_img)
         raw_img_label.grid(row = 1, column = 0,pady=20,sticky = "N")
 
         process_image_button = Button(main,text="Process the Image",padx = 48, bd = '10',activebackground = "#00FF00",bg="#FFFFFF",font=button_fonts, command = process)
@@ -61,32 +64,37 @@ def upload():
 
 # Runs through
 def process():
-    global raw_img1,raw_img_label1
+    global img_path
+    global final_image
+    global final_img_label, output_img_label
 
+    # yolo_process = ['./darknet', 'detector', 'test', 'objsenior_new.data', 'yolov4-objsenior_new.cfg',
+    #                 'yolov4-objsenior_last_new.weights', '-dont_show', '-ext_output', '-out', 'results.json', str(browseFile)]
 
-    filetypes = (("png","*.png"),("jpeg","*.jpg"),("bmp","*.bmp"),("all files","*.*"))
-    main.filename =  filedialog.askopenfilename(title = "Select an Image",filetypes = filetypes)
+    # # result = subprocess.run([sys.executable, "-c", "print('ocean')"])
+    # result = subprocess.run(yolo_process, check=True,
+    #                         cwd='..', stdout=subprocess.PIPE)
+    
+    # # write result into output file to be used for finding the recognized boxes 
+    # with open('../predictions.txt', 'w') as out_file:
+    #     out_file.write(result.stdout.decode())
 
-    if main.filename:
-        try:
-            raw_img_label1.grid_forget()
-        except:
-            pass   
-        win_width = main.winfo_width() 
-        win_height = main.winfo_height()
-        temp_img1 = ImageTk.PhotoImage(Image.open(main.filename))
-        img_width = temp_img1.width()
-        img_height = temp_img1.height()
+    try:
+        final_img_label.grid_forget()
+        output_img_label.grid_forget()
+    except:
+        pass  
+    
+    output = subprocess.run(f'python ../img_proc/test.py -path="{img_path}"', capture_output = True, text = True)
 
-        raw_img1 = resize_image(Image.open(main.filename))
-        raw_img1 = ImageTk.PhotoImage(raw_img1)
-        # raw_img = ImageTk.PhotoImage(Image.open(main.filename))
-        raw_img_label1 = Label(image = raw_img1)
-        raw_img_label1.grid(row = 1, column = 1,pady=20,sticky = "N")
-        raw_img_label2 = Label(image = raw_img1)
-        raw_img_label2.grid(row = 2, column = 1,pady=20,sticky = "N")
- 
-
+    print(output.stdout)
+    final_image = resize_image(Image.open("../finished_image.png"))
+    final_image = ImageTk.PhotoImage(final_image)
+    final_img_label = Label(main,image = final_image)
+    final_img_label.grid(row = 1, column = 1,pady=20,sticky = "N")
+    
+    output_img_label = Label(main,text = output.stdout)
+    output_img_label.grid(row = 2, column = 1,pady=20,sticky = "N")
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # CREATING MAIN WINDOW
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

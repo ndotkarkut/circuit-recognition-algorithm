@@ -3,6 +3,7 @@ import numpy as np
 import json
 import imutils
 from shapedetector import ShapeDetector
+import argparse
 
 def parse_predictions():
     detections = []
@@ -257,7 +258,7 @@ def node_enumeration(neighbor_info, cmp_locations, resistor_dimensions):
                 if nodes[neighbor_node_num] == None:
                     if nodes[i] == None:
                         addend = max([n for n in nodes.values() if n != None])
-                        print('addend', addend)
+                        #print('addend', addend)
                         nodes[neighbor_node_num] = addend + 1
                     else:
                         nodes[neighbor_node_num] = nodes[i] + 1
@@ -266,10 +267,10 @@ def node_enumeration(neighbor_info, cmp_locations, resistor_dimensions):
                 if nodes[neighbor_node_num] == None:
                     if nodes[i] == None:
                         addend = max([n for n in nodes.values() if n != None])
-                        print('addend', addend)
+                        #print('addend', addend)
                         nodes[neighbor_node_num] = addend + 1
                     else:
-                        nodes[neighbor_node_num] = nodes[i] + 1
+                        nodes[neighbor_node_num] = nodes[i]
                 else:
                     nodes[neighbor_node_num] = nodes[i]
                     
@@ -286,13 +287,13 @@ def node_enumeration(neighbor_info, cmp_locations, resistor_dimensions):
     # used to tell if it is series or parallel circuit
     final_res_node_nums, final_res_node_str = apply_num_to_node(resistor_nodes, nodes)
                 
-    print(cmp_nodes)        
-    print(nodes)
-    print(final_res_node_nums)
+    #print(cmp_nodes)        
+    #print(nodes)
+    #print(final_res_node_nums)
     
     parallel_amount, series_amount = count_parallel_and_series(final_res_node_str)
     
-    print(parallel_amount, series_amount)
+    #print(parallel_amount, series_amount)
     
     return (parallel_amount, series_amount)
 
@@ -313,7 +314,7 @@ def count_parallel_and_series(final_node_vals):
         else:
             occurence_dict[node_val] += 1
                 
-    print(occurence_dict)
+    #print(occurence_dict)
             
     # length of dictionary decides how many resistors in series there are
     # non-one values for keys means there are resistors in parallel
@@ -360,11 +361,11 @@ def clean_res_nodes(node_arr):
     return_array = []
     for arr in clean_array:
         return_array.append(tuple(arr))
-    print(return_array)
+    #print(return_array)
     return return_array
 
 def clean_lines(line_array, img_shape, line_type):
-    print(img_shape)
+    #print(img_shape)
     '''
     function for getting rid of duplicate lines that are found in
     the Houghline transform when they are really the same line
@@ -391,16 +392,16 @@ def clean_lines(line_array, img_shape, line_type):
                 in_line = False
                 # checking if it is SAME_LINE
                 if line[0] in range(clean_line[0] - x_bounds, clean_line[0] + x_bounds):
-                    print('line0')
+                    #print('line0')
                     same_line += 1
                 if line[1] in range(clean_line[1] - y_bounds, clean_line[1] + y_bounds):
-                    print('line1')
+                   #print('line1')
                     same_line += 1
                 if line[2] in range(clean_line[2] - x_bounds, clean_line[2] + x_bounds):
-                    print('line2')
+                    #print('line2')
                     same_line += 1
                 if line[3] in range(clean_line[3] - y_bounds, clean_line[3] + y_bounds):
-                    print('line3')
+                    #print('line3')
                     same_line += 1
                     
                 if same_line == 4:
@@ -435,7 +436,8 @@ def clean_lines(line_array, img_shape, line_type):
         i += 1
         
     if line_type == 'vertical':
-        print(clean_array)
+        #print(clean_array)
+        pass
     
     indices_to_remove = []
     for line in clean_array:
@@ -478,7 +480,7 @@ def clean_lines(line_array, img_shape, line_type):
                 ):
                     # if line we are testing is in between our already clean line
                     # then we do not add to array by setting add_to_clean_array = False
-                    print(clean_line, line)
+                    #print(clean_line, line)
                     if (
                         clean_line[1] <= line[1] <= clean_line[3] and 
                         clean_line[1] <= line[3] <= clean_line[3]
@@ -501,17 +503,21 @@ def clean_lines(line_array, img_shape, line_type):
 
             clean_line_idx += 1       
          
-    print('##############################################\n')
-    print('6,',indices_to_remove)
+    #print('##############################################\n')
+    #print('6,',indices_to_remove)
     for idx in sorted(indices_to_remove, reverse=True):
         clean_array.pop(idx)
         
-    print(clean_array)
+    #print(clean_array)
     return clean_array
 
 
-# images = ['../circuit4.png', '../predictions.jpg']
-images = ['../circuit5.png']
+parser = argparse.ArgumentParser()
+parser.add_argument("-path", action='store', required=True)
+image_path = str(parser.parse_args().path)
+#print(image_path)
+
+images = [image_path]
 
 i = 0
 for image in images:
@@ -552,7 +558,7 @@ for image in images:
             cv2.line(loop_detection_img, (left_x + int(width / 2), top_y), (left_x + int(width / 2), top_y + height), (0,0,0), 2)
         
         loop_det_img_copy = loop_detection_img.copy()
-        cv2.imshow('loop_det', loop_det_img_copy)
+        #cv2.imshow('loop_det', loop_det_img_copy)
         # find lines of the wires on the circuits using HoughLinesP
         # first blur the image for smoother lines 
         loop_det_img_copy = cv2.GaussianBlur(loop_det_img_copy, (3,3), 0)
@@ -562,13 +568,13 @@ for image in images:
         edges = cv2.Canny(gray_img, 75, 100)
         # create a threshold image
         # thresh = cv2.threshold(gray_img, 150, 255, cv2.THRESH_BINARY)[1]
-        thresh = cv2.threshold(gray_img, 170, 255, cv2.THRESH_BINARY)[1]
+        thresh = cv2.threshold(gray_img, 150, 255, cv2.THRESH_BINARY)[1]
         # edges of threshold image lol
         thresh_edges = cv2.Canny(thresh, 75, 100)
         
-        cv2.imshow('gray', gray_img)
-        cv2.imshow('thresh', thresh)
-        cv2.imshow('thresh_edges', thresh_edges)
+        #cv2.imshow('gray', gray_img)
+        #cv2.imshow('thresh', thresh)
+        #cv2.imshow('thresh_edges', thresh_edges)
 
         # END OF FOR-LOOP
 
@@ -576,7 +582,7 @@ for image in images:
     lines = cv2.HoughLinesP(thresh_edges.copy(), 1, np.pi/180, 75,
                     minLineLength=5, maxLineGap=45)
     
-    print('number of lines:', len(lines))
+    #print('number of lines:', len(lines))
     horizontal_lines = []
     vertical_lines = []
     # add lines to image
@@ -597,14 +603,14 @@ for image in images:
     horizontal_lines = clean_lines(horizontal_lines, img.shape, 'horizontal')
     vertical_lines = clean_lines(vertical_lines, img.shape, 'vertical')
     
-    cv2.imshow('loop_det', loop_det_img_copy)
+    #cv2.imshow('loop_det', loop_det_img_copy)
 
     intersect_coords = []
     intersect_info = []
     # find intersections 
     
-    print('horizontal:', len(horizontal_lines))
-    print('vertical', len(vertical_lines))
+    #print('horizontal:', len(horizontal_lines))
+    #print('vertical', len(vertical_lines))
     
     for horizontal_line in horizontal_lines:
         for vertical_line in vertical_lines:
@@ -632,10 +638,12 @@ for image in images:
         for amount in parallel_amt:
             print(f'THERE IS 1 SERIES OF {amount} RESISTORS IN PARALLEL')
             print(f'{series_amt} SERIES IN TOTAL')
+            
     else:
         print(f'NO PARALLEL COMPONENTS, JUST {series_amt} COMPONENTS IN SERIES')    
         
-    cv2.imshow(f'loop detection img {i}', loop_detection_img)
+    #cv2.imshow(f'loop detection img {i}', loop_detection_img)
     # cv2.imshow(f'Image {i}', img)
+    cv2.imwrite("../finished_image.png",loop_detection_img)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
