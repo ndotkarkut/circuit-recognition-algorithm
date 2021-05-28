@@ -3,8 +3,6 @@ from PIL import ImageTk,Image
 from tkinter import filedialog
 import subprocess
 
-from numpy.core.fromnumeric import resize
-
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # FUNCTION DEFINITIONS
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -46,7 +44,7 @@ def upload():
     global process_image_button
     global img_path
 
-    filetypes = (("png","*.png"),("jpeg","*.jpg"),("bmp","*.bmp"),("all files","*.*"))
+    filetypes = (("png","*.png"),("jpeg","*.jpg"),("jpeg","*.jpeg"),("bmp","*.bmp"),("all files","*.*"))
     #main.filename =  filedialog.askopenfilename(title = "Select an Image",filetypes = filetypes)
     img_path = filedialog.askopenfilename(title="Select an Image", filetypes=filetypes)
 
@@ -79,8 +77,13 @@ def process():
     except:
         pass
     
-    yolo_process = ['./darknet', 'detector', 'test', 'objsenior_new.data', 'yolov4-objsenior_new.cfg',
-                    'yolov4-objsenior_last_new2.weights', '-dont_show', '-ext_output', '-out', 'results.json', str(img_path)]
+    if True:
+        yolo_process = ['./darknet', 'detector', 'test', 'handwritten_set/objsenior2.data', 'handwritten_set/yolov4-objsenior2.cfg',
+                        'handwritten_set/yolov4-objsenior2_final.weights', '-dont_show', '-ext_output', '-out', 'results.json', str(img_path)]
+    # fall back
+    else:
+        yolo_process = ['./darknet', 'detector', 'test', 'objsenior_new.data', 'yolov4-objsenior_new.cfg',
+                        'yolov4-objsenior_last_new2.weights', '-dont_show', '-ext_output', '-out', 'results.json', str(img_path)]
 
     # result = subprocess.run([sys.executable, "-c", "print('ocean')"])
     result = subprocess.run(yolo_process, check=True,

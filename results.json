@@ -1,11 +1,17 @@
 [
 {
  "frame_id":1, 
- "filename":"/home/nkkar/senior-design/circuit-recognition-algorithm/circuit4.png", 
+ "filename":"/home/nkkar/senior-design/circuit-recognition-algorithm/test_pictures/handwritten/0525_wont_work.jpg", 
  "objects": [ 
-  {"class_id":0, "name":"Resistor", "relative_coordinates":{"center_x":0.664080, "center_y":0.488524, "width":0.050723, "height":0.243052}, "confidence":0.999653}, 
-  {"class_id":0, "name":"Resistor", "relative_coordinates":{"center_x":0.859255, "center_y":0.486993, "width":0.054892, "height":0.236348}, "confidence":0.999529}, 
-  {"class_id":0, "name":"Resistor", "relative_coordinates":{"center_x":0.467549, "center_y":0.485065, "width":0.052436, "height":0.239159}, "confidence":0.999180}
+  {"class_id":2, "name":"dc ", "relative_coordinates":{"center_x":0.185983, "center_y":0.481273, "width":0.110213, "height":0.197109}, "confidence":0.994870}, 
+  {"class_id":1, "name":"Resistor", "relative_coordinates":{"center_x":0.716406, "center_y":0.594744, "width":0.089862, "height":0.074944}, "confidence":0.999771}, 
+  {"class_id":1, "name":"Resistor", "relative_coordinates":{"center_x":0.311131, "center_y":0.202751, "width":0.146518, "height":0.096578}, "confidence":0.999079}, 
+  {"class_id":1, "name":"Resistor", "relative_coordinates":{"center_x":0.436814, "center_y":0.526525, "width":0.048440, "height":0.314113}, "confidence":0.998370}, 
+  {"class_id":1, "name":"Resistor", "relative_coordinates":{"center_x":0.341516, "center_y":0.739142, "width":0.133592, "height":0.100562}, "confidence":0.997091}, 
+  {"class_id":1, "name":"Resistor", "relative_coordinates":{"center_x":0.596391, "center_y":0.467213, "width":0.051208, "height":0.263774}, "confidence":0.996081}, 
+  {"class_id":1, "name":"Resistor", "relative_coordinates":{"center_x":0.716000, "center_y":0.189894, "width":0.139761, "height":0.085215}, "confidence":0.991352}, 
+  {"class_id":1, "name":"Resistor", "relative_coordinates":{"center_x":0.715889, "center_y":0.857106, "width":0.095018, "height":0.057652}, "confidence":0.978596}, 
+  {"class_id":1, "name":"Resistor", "relative_coordinates":{"center_x":0.847297, "center_y":0.453459, "width":0.045875, "height":0.278092}, "confidence":0.968327}
  ] 
 }
 ]

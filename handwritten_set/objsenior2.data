@@ -1,0 +1,4 @@
+classes= 4
+train  = handwritten_set/trainsenior2.txt
+names = handwritten_set/objsenior2.names
+backup = seniorbackup2/

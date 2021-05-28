@@ -4,6 +4,9 @@
 *.csv
 *.out
 *.png
+*.jpg
+*.jpeg
+*.ms14
 *.so
 *.exe
 *.dll
@@ -57,3 +60,5 @@ uselib
 uselib_track
 darknet
 vcpkg/
+
+predictions.txt

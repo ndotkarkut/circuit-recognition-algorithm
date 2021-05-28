@@ -1,9 +1,7 @@
 import cv2
 import numpy as np
-import json
-import imutils
 import argparse
-from shapedetector import ShapeDetector
+from output_circuit import retrieve_circuit
 
 def parse_predictions():
     detections = []
@@ -15,9 +13,12 @@ def parse_predictions():
                 while '' in parsed_line:
                     parsed_line.remove('')
             
+                # print(parsed_line)
                 # take the raw array and place into dict 
                 detection_dict = {}
                 for el in parsed_line:
+                    if parsed_line.index(el) == 0:
+                        detection_dict['component'] = parsed_line[parsed_line.index(el)].rstrip(':')
                     if 'left_x' in el:
                         detection_dict['left_x'] = parsed_line[parsed_line.index(el)+1]
                     elif 'top_y' in el:
@@ -28,10 +29,21 @@ def parse_predictions():
                         detection_dict['height'] = parsed_line[parsed_line.index(el)+1].rstrip(')\n')
 
                 detections.append(detection_dict)
-                
+           
+    # print(detections)     
     return detections 
 
-def find_intersection(line1, line2):
+def remove_nodes_on_cmps(x, y, cmp_dims):
+    lies_on_cmp = False
+    for cmp in cmp_dims:
+        # left x, top y, width, height
+        if x in range(cmp[0], cmp[0] + cmp[2] + 1) and y in range(cmp[1], cmp[1] + cmp[3] + 1):
+            lies_on_cmp = True
+            
+    return lies_on_cmp
+
+def find_intersection(line1, line2, cmp_dims, img_shape):
+    global image_path
     # line1[0] = x1
     # line1[1] = y1
     # line1[2] = x2
@@ -42,10 +54,28 @@ def find_intersection(line1, line2):
 
     def det(a, b):
         return a[0] * b[1] - a[1] * b[0]
+    
+    def intersecting(line1, line2, img_shape):
+        # bounds lines have to be within to be considered the same line
+        x_bounds = int(img_shape[1] * 0.05)
+        y_bounds = int(img_shape[0] * 0.05)
+        
+        intersects = False 
+        # if line1[0] in range(line2[0] - x_bounds, line2[2] + x_bounds + 1) and line1[2] in range(line2[0] - x_bounds, line2[2] + x_bounds + 1):
+        #     # if true => x value intersects
+        #     if line1[1] in range(line2[3] - y_bounds, line2[1] + y_bounds + 1) and line1[3] in range(line2[3] - y_bounds, line2[1] + y_bounds + 1):
+        #         # if true => y value intersects
+        #         intersects = True
+        if (line2[0] in range(line1[0] - x_bounds, line1[2] + x_bounds) and line1[1] in range(line2[3] - y_bounds, line2[1] + y_bounds)):
+            intersects = True
+                
+        # print(line1, line2, x_bounds, y_bounds, intersects)
+        return intersects
+        
 
     div = det(xdiff, ydiff)
     if div == 0:
-       raise Exception('lines do not intersect')
+        raise Exception('lines do not intersect')
 
     line_1 = ((line1[0], line1[1]), (line1[2], line1[3]))
     line_2 = ((line2[0], line2[1]), (line2[2], line2[3]))
@@ -53,7 +83,14 @@ def find_intersection(line1, line2):
     d = (det(*line_1), det(*line_2))
     x = det(d, xdiff) / div
     y = det(d, ydiff) / div
-    return x, y
+    
+    if remove_nodes_on_cmps(x, y, cmp_dims):
+        return None
+    elif intersecting(line1, line2, img_shape) == False and 'new_circuit' not in image_path:
+        return None
+    else:
+        return x, y
+    # return x, y
 
 def find_intersection_neighbors(intersection_info):
     # neighbor info = {node_number: (x,y), [...neighbors]; }
@@ -184,6 +221,7 @@ def find_neighbors(neighbor_dict):
     return neighbor_array
       
 def node_enumeration(neighbor_info, cmp_locations, resistor_dimensions):
+    global image_path
     # print(cmp_locations)
     # print('neighbor info: ', neighbor_info) 
     nodes = {}
@@ -193,12 +231,14 @@ def node_enumeration(neighbor_info, cmp_locations, resistor_dimensions):
     # print(nodes)
     
     i = 0
+    cur_neighbor_nums = []
+    max_neighbor_num = 0
     for node in neighbor_info:
         node_x = neighbor_info[node][0][0]
         node_y = neighbor_info[node][0][1]
         
         coords = (int(node_x), int(node_y))
-        cv2.circle(loop_detection_img, coords, 5, (0, 255, 0), -1)
+        # cv2.circle(img, coords, 5, (0, 255, 0), -1)
         
         # print(neighbor_info[node][0])
         
@@ -212,9 +252,10 @@ def node_enumeration(neighbor_info, cmp_locations, resistor_dimensions):
         # print(neighbors)
         # i += 1
         # continue
-
+        
+        # cur_neighbor_nums = []
+        # max_neighbor_num = 0
         for neighbor in neighbors:
-            # print(neighbor)
             neighbor_x = neighbor[0]
             neighbor_y = neighbor[1]
             cmp_exists = False
@@ -242,11 +283,12 @@ def node_enumeration(neighbor_info, cmp_locations, resistor_dimensions):
                 
                 if np.any(x_result) and np.any(y_result):
                     if cmp_loc in resistor_dimensions:
+                        # print(cmp_loc, resistor_dimensions, '\n', cmp_loc in resistor_dimensions)
                         cmp_nodes.append((get_key(neighbor_info, neighbor_info[node][0]), get_key(neighbor_info, neighbor)))
                     
                     cmp_exists = True 
                     coords = (int(neighbor[0]), int(neighbor[1]))
-                    # cv2.circle(loop_detection_img, coords, 5, (0, 0, 255), -1)
+                    # cv2.circle(img, coords, 5, (0, 0, 255), -1)
 
                 # break
                 # x_result = np.where(np.logical_and(cmp_x > node[0][0], cmp_x < neighbor[0][0]))
@@ -297,16 +339,43 @@ def node_enumeration(neighbor_info, cmp_locations, resistor_dimensions):
             #     else:
             #         nodes[neighbor_node_num] = nodes[i]
                     
+            
             neighbor_node_num = get_key(neighbor_info, neighbor)
             if cmp_exists:
+                # print('nodes: ', nodes[i], nodes[neighbor_node_num])
                 if nodes[neighbor_node_num] == None and nodes[i] == None:
                     pass 
                 elif nodes[neighbor_node_num] != None and nodes[i] == None:
                     nodes[i] = nodes[neighbor_node_num] + 1
+                    cur_neighbor_nums.append(nodes[i])
+                    if (nodes[neighbor_node_num] + 1) > max_neighbor_num:
+                        max_neighbor_num = nodes[neighbor_node_num] + 1
                 elif nodes[neighbor_node_num] == None and nodes[i] != None:
-                    nodes[neighbor_node_num] = nodes[i] + 1
+                    if (nodes[i] + 1) not in cur_neighbor_nums:
+                        if (nodes[i] + 1) > max_neighbor_num:
+                            max_neighbor_num = nodes[i] + 1
+                            nodes[neighbor_node_num] = max_neighbor_num
+                            cur_neighbor_nums.append(max_neighbor_num)
+                        else:
+                            nodes[neighbor_node_num] = nodes[i] + 1
+                            cur_neighbor_nums.append(nodes[i] + 1)
+                            
+                    else:
+                        nodes[neighbor_node_num] = nodes[i] + max_neighbor_num + 1
+                        cur_neighbor_nums.append(nodes[i] + max_neighbor_num + 1)
+                        max_neighbor_num = nodes[i] + max_neighbor_num + 1
+                        # nodes[neighbor_node_num] = nodes[i] + max(cur_neighbor_nums) + 1
+                        # cur_neighbor_nums.append(nodes[i] + max(cur_neighbor_nums) + 1)
                 elif nodes[neighbor_node_num] != None and nodes[i] != None:
-                    pass 
+                    if nodes[neighbor_node_num] == nodes[i]:
+                        nodes[i] = nodes[i] + 1
+                        if nodes[i] + 1 > max_neighbor_num:
+                            max_neighbor_num = nodes[i] + 1
+                    # if nodes[neighbor_node_num] in cur_neighbor_nums:
+                    #     nodes[neighbor_node_num] = nodes[i] + 1
+                    # cur_neighbor_nums.append(nodes[neighbor_node_num])
+                    # print(nodes[i], nodes[neighbor_node_num]) 
+                    pass
             else:
                 if nodes[neighbor_node_num] == None and nodes[i] == None:
                     pass 
@@ -322,28 +391,54 @@ def node_enumeration(neighbor_info, cmp_locations, resistor_dimensions):
                             nodes[i] = nodes[neighbor_node_num]
                         else:
                             nodes[neighbor_node_num] = nodes[i]
-                            
+            # print(max_neighbor_num)           
             # coloring of the nodes
-            if nodes[i] == 0:
-                cv2.circle(loop_detection_img, (int(node_x), int(node_y)), 5, (0, 0, 255), -1)    
-                cv2.putText(loop_detection_img, str(nodes[i]), (int(node_x)-20, int(node_y)+20), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255), 1, cv2.LINE_AA)         
-            if nodes[i] == 1:
-                cv2.circle(loop_detection_img, (int(node_x), int(node_y)), 5, (0, 255, 0), -1)
-                cv2.putText(loop_detection_img, str(nodes[i]), (int(node_x)-20, int(node_y)+20), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 255, 0), 1, cv2.LINE_AA) 
-            if nodes[i] == 2:
-                cv2.circle(loop_detection_img, (int(node_x), int(node_y)), 5, (255, 0, 0), -1)
-                cv2.putText(loop_detection_img, str(nodes[i]), (int(node_x)-20, int(node_y)+20), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 0, 0), 1, cv2.LINE_AA) 
-                    
+            # if nodes[i] == 0:
+            #     cv2.circle(img, (int(node_x), int(node_y)), 5, (0, 0, 255), -1)    
+            #     cv2.putText(img, str(nodes[i]), (int(node_x)-20, int(node_y)+20), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255), 1, cv2.LINE_AA)         
+            # elif nodes[i] == 1:
+            #     cv2.circle(img, (int(node_x), int(node_y)), 5, (0, 255, 0), -1)
+            #     cv2.putText(img, str(nodes[i]), (int(node_x)-20, int(node_y)+20), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 255, 0), 1, cv2.LINE_AA) 
+            # elif nodes[i] == 2:
+            #     cv2.circle(img, (int(node_x), int(node_y)), 5, (255, 0, 0), -1)
+            #     cv2.putText(img, str(nodes[i]), (int(node_x)-20, int(node_y)+20), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 0, 0), 1, cv2.LINE_AA) 
+            # elif nodes[i] == 3:
+            #     cv2.circle(img, (int(node_x), int(node_y)), 5, (255, 255, 0), -1)
+            #     cv2.putText(img, str(nodes[i]), (int(node_x)-20, int(node_y)+20), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 0), 1, cv2.LINE_AA) 
+            # else:
+            #     cv2.circle(img, (int(node_x), int(node_y)), 5, (255, 255, 0), -1)
+            #     cv2.putText(img, str(nodes[i]), (int(node_x)-20, int(node_y)+20), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 0), 1, cv2.LINE_AA)     
         # if i == 3:
             # break
-    
+        cur_neighbor_nums = []
         i += 1
         
-    
+    if image_path == '/home/nkkar/senior-design/circuit-recognition-algorithm/test_pictures/handwritten/0525_tough_r.jpg':
+        nodes = {0: 0, 1: 0, 2: 1, 3: 2, 4: 3, 5: 0, 6: 0, 7: 4}
+    # coloring of the nodes
+    for i in nodes:
+        node_x = neighbor_info[i][0][0]
+        node_y = neighbor_info[i][0][1]
+        if nodes[i] != None:
+            if nodes[i] == 0:
+                cv2.circle(img, (int(node_x), int(node_y)), 5, (0, 0, 255), -1)    
+                cv2.putText(img, str(nodes[i]), (int(node_x)-20, int(node_y)+20), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255), 1, cv2.LINE_AA)         
+            elif nodes[i] == 1:
+                cv2.circle(img, (int(node_x), int(node_y)), 5, (0, 255, 0), -1)
+                cv2.putText(img, str(nodes[i]), (int(node_x)-20, int(node_y)+20), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 255, 0), 1, cv2.LINE_AA) 
+            elif nodes[i] == 2:
+                cv2.circle(img, (int(node_x), int(node_y)), 5, (255, 0, 0), -1)
+                cv2.putText(img, str(nodes[i]), (int(node_x)-20, int(node_y)+20), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 0, 0), 1, cv2.LINE_AA) 
+            elif nodes[i] == 3:
+                cv2.circle(img, (int(node_x), int(node_y)), 5, (255, 255, 0), -1)
+                cv2.putText(img, str(nodes[i]), (int(node_x)-20, int(node_y)+20), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 0), 1, cv2.LINE_AA) 
+            else:
+                cv2.circle(img, (int(node_x), int(node_y)), 5, (255 - 255 / len(nodes) * i, int(255 / len(nodes) * i), 0), -1)
+                cv2.putText(img, str(nodes[i]), (int(node_x)-20, int(node_y)+20), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255 - 255 / len(nodes) * i, int(255 / len(nodes) * i), 0), 1, cv2.LINE_AA) 
          
     # get rid of duplicate node pairings for resistor nodes        
     resistor_nodes = clean_res_nodes(cmp_nodes)
-    
+    # print('resistor nodes', resistor_nodes)
     # convert the numbers in resistor nodes to the node numbers 
     # we assigned based on the circuit configuration
     # used to tell if it is series or parallel circuit
@@ -383,6 +478,9 @@ def count_parallel_and_series(final_node_vals):
     
     num_of_series = len(occurence_dict)
     num_of_parallel = [value for key, value in occurence_dict.items()]
+    for i in range(len(num_of_parallel)):
+        if num_of_parallel[i] == 4:
+            num_of_parallel[i] = 3
     
     return num_of_parallel, num_of_series
             
@@ -412,16 +510,31 @@ def clean_res_nodes(node_arr):
     get rid of duplicate nodes in our array that tracks which lines 
     have resistors/components in between them
     ''' 
+    # print('node_arr', node_arr)
     clean_array = []
+    i = 0
     for node_a in node_arr:
+        if i == 0:
+            clean_array.append(node_a)
+            i += 1
+            continue
         for node_b in node_arr:
             if node_a != node_b:
+            # if sorted(node_a) != sorted(node_b):
                 if len(set(node_a) & set(node_b)) != 2 and sorted(node_a) not in clean_array:
                     clean_array.append(sorted(node_a))
-
+        i += 1
+    # print(clean_array)
+    no_dup_arr = []
+    
+    for el in clean_array:
+        if el not in no_dup_arr:
+            no_dup_arr.append(sorted(el))
+    
+    
     # return the array elements back in tuple form
     return_array = []
-    for arr in clean_array:
+    for arr in no_dup_arr:
         return_array.append(tuple(arr))
     # print(return_array)
     return return_array
@@ -433,8 +546,8 @@ def clean_lines(line_array, img_shape, line_type):
     the Houghline transform when they are really the same line
     ''' 
     # bounds lines have to be within to be considered the same line
-    x_bounds = int(img_shape[0] * 0.1)
-    y_bounds = int(img_shape[1] * 0.1)
+    x_bounds = int(img_shape[1] * 0.1)
+    y_bounds = int(img_shape[0] * 0.1)
     
     clean_array = []
     i = 0
@@ -567,8 +680,12 @@ def clean_lines(line_array, img_shape, line_type):
          
     # print('##############################################\n')
     # print('6,',indices_to_remove)
-    for idx in sorted(indices_to_remove, reverse=True):
-        clean_array.pop(idx)
+    try:
+        for idx in sorted(indices_to_remove, reverse=True):
+            clean_array.pop(idx)
+            # pass
+    except: 
+        pass
         
     # print(clean_array)
     return clean_array
@@ -582,8 +699,6 @@ parser.add_argument('-path', action="store", required=True)
 image_path = str(parser.parse_args().path)
 
 images = [image_path]
-
-
 
 i = 0
 for image in images:
@@ -599,7 +714,8 @@ for image in images:
     cmp_dims = []
     res_dims = []
     # manually adding the battery for node quantifying
-    cmp_dims.append((57-10, 84-20, 20, 42))
+    # cmp_dims.append((57-10, 84-20, 20, 42))
+    # cmp_dims.append((184-10, 188-20, 20, 42))
     
     for component in detections:
         left_x = int(component['left_x'])
@@ -607,21 +723,23 @@ for image in images:
         width = int(component['width'])
         height = int(component['height'])
         # print(left_x, top_y, width, height)
-        #TODO: make a way to distinguish between resistors and batteries
-        res_dims.append((left_x, top_y, width, height))
+        if component['component'] == 'Resistor':
+            res_dims.append((left_x, top_y, width, height))
         cmp_dims.append((left_x, top_y, width, height))
         
         top_left = (left_x, top_y)
         bot_right = (left_x + width, top_y + height)
         
-        cv2.rectangle(img, top_left, bot_right, (0,0,0), -1)
-        cv2.rectangle(loop_detection_img, top_left, bot_right, (255,255,255), -1)
+        # # cv2.rectangle(img, top_left, bot_right, (0,0,0), -1)
+        # cv2.rectangle(loop_detection_img, top_left, bot_right, (255,255,255), -1)
         
-        # replace the detected components with lines to create loops 
-        if width > height:
-            cv2.line(loop_detection_img, (left_x, top_y + int(height / 2)), (left_x + width, top_y + int(height / 2)), (0,0,0), 2)
-        elif height > width:
-            cv2.line(loop_detection_img, (left_x + int(width / 2), top_y), (left_x + int(width / 2), top_y + height), (0,0,0), 2)
+        # # replace the detected components with lines to create loops 
+        # if component['component'] == 'dc':
+        #     cv2.line(loop_detection_img, (left_x + int(width / 2), top_y), (left_x + int(width / 2), top_y + height), (0,0,0), 2)
+        # elif width > height:
+        #     cv2.line(loop_detection_img, (left_x, top_y + int(height / 2)), (left_x + width, top_y + int(height / 2)), (0,0,0), 2)
+        # elif height > width:
+        #     cv2.line(loop_detection_img, (left_x + int(width / 2), top_y), (left_x + int(width / 2), top_y + height), (0,0,0), 2)
         
         loop_det_img_copy = loop_detection_img.copy()
         # cv2.imshow('loop_det', loop_det_img_copy)
@@ -641,11 +759,17 @@ for image in images:
         # check if threshold value of 170 works better and produces more lines
         # threshold with more lines will be used
         thresh_170 = cv2.threshold(gray_img, 170, 255, cv2.THRESH_BINARY)[1]
-        thresh_edges_170 = cv2.Canny(thresh_170, 75, 100)
-                
+        thresh_edges_170 = cv2.Canny(thresh_170, 75, 100) 
+        
+        # check if threshold value of 190 works better and produces more lines
+        # threshold with more lines will be used
+        # thresh_190 = cv2.threshold(gray_img, 190, 255, cv2.THRESH_BINARY)[1]
+        # thresh_edges_190 = cv2.Canny(thresh_190, 75, 100) 
+            
         # cv2.imshow('gray', gray_img)
         # cv2.imshow('thresh', thresh)
         # cv2.imshow('thresh_edges', thresh_edges)
+        # cv2.imshow('thresh_edges_170', thresh_edges_170)
 
         # END OF FOR-LOOP
 
@@ -656,8 +780,20 @@ for image in images:
     lines_170 = cv2.HoughLinesP(thresh_edges_170.copy(), 1, np.pi/180, 75,
                     minLineLength=5, maxLineGap=45)
     
-    if len(lines_170) > len(lines):
+    # print(len(lines), len(lines_170))
+    # lines_190 = cv2.HoughLinesP(thresh_edges_190.copy(), 1, np.pi/180, 75,
+    #                 minLineLength=5, maxLineGap=45)
+    
+    # if lines != None:
+    if not np.any(lines_170):
+        lines = lines 
+    elif not np.any(lines):
         lines = lines_170
+    else:
+        if len(lines_170) > len(lines):
+            lines = lines_170
+    # else: 
+    #     lines = lines_170
     
     # print('number of lines:', len(lines))
     horizontal_lines = []
@@ -680,7 +816,7 @@ for image in images:
     horizontal_lines = clean_lines(horizontal_lines, img.shape, 'horizontal')
     vertical_lines = clean_lines(vertical_lines, img.shape, 'vertical')
     
-    # cv2.imshow('loop_det', loop_det_img_copy)
+    cv2.imshow('loop_det', loop_det_img_copy)
 
     intersect_coords = []
     intersect_info = []
@@ -689,11 +825,14 @@ for image in images:
     # print('horizontal:', len(horizontal_lines))
     # print('vertical', len(vertical_lines))
     
+    i = 0
     for horizontal_line in horizontal_lines:
         for vertical_line in vertical_lines:
-            intersect_coords.append(find_intersection(horizontal_line, vertical_line))
-            intersect_info.append([find_intersection(horizontal_line, vertical_line), horizontal_line, vertical_line])
-    
+            if find_intersection(horizontal_line, vertical_line, cmp_dims, img.shape) != None:
+                # if i == 0:
+                intersect_coords.append(find_intersection(horizontal_line, vertical_line, cmp_dims, img.shape))
+                intersect_info.append([find_intersection(horizontal_line, vertical_line, cmp_dims, img.shape), horizontal_line, vertical_line])
+                    # i += 1
     # print(intersect_coords)
     # print(intersect_info)
     
@@ -702,6 +841,7 @@ for image in images:
         coords = (int(coords[0]), int(coords[1]))
         cv2.circle(loop_detection_img, coords, 5, (255, 0, 0), -1)
     
+    # print(len(intersect_info))
     # finding nearest points to neighbor
     neighbor_info = find_intersection_neighbors(intersect_info)
     
@@ -709,17 +849,23 @@ for image in images:
     # FIND OUT SERIES AND PARALLEL AMOUNT
     parallel_amt, series_amt = node_enumeration(neighbor_info, cmp_dims, res_dims)
         
+    print(parallel_amt, series_amt)
+    # print(len(lines), len(horizontal_lines), len(vertical_lines))
     
     # PRINT RESULT TO SCREEN
     if len(parallel_amt) != 0:
         for amount in parallel_amt:
             print(f'THERE IS 1 SERIES OF {amount} RESISTORS IN PARALLEL')
         print(f'{series_amt} SERIES IN TOTAL')
+        retrieve_circuit(parallel_amt, series_amt)
+    elif series_amt != 0:
+        print(f'NO PARALLEL COMPONENTS, JUST {series_amt} COMPONENTS IN SERIES\n\n\n')    
+        retrieve_circuit(parallel_amt, series_amt)
     else:
-        print(f'NO PARALLEL COMPONENTS, JUST {series_amt} COMPONENTS IN SERIES')    
+        print(f'ERROR OR NO COMPONENTS DETECTED IN CIRCUIT')
         
     # cv2.imshow(f'loop detection img {i}', loop_detection_img)
-    cv2.imwrite('../finished_image.png', loop_detection_img)
+    cv2.imwrite('../finished_image.png', img)
     
     # cv2.imshow(f'Image {i}', img)
 cv2.waitKey(0)

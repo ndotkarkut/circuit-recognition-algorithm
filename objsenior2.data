@@ -1,0 +1,4 @@
+classes= 2
+train  = data/trainsenior2.txt
+names = objsenior2.names
+backup = seniorbackup2/

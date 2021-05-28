@@ -4,11 +4,17 @@ nms_kind: greedynms (1), beta = 0.600000
 nms_kind: greedynms (1), beta = 0.600000 
 nms_kind: greedynms (1), beta = 0.600000 
 
- seen 64, trained: 256 K-images (4 Kilo-batches_64) 
+ seen 64, trained: 512 K-images (8 Kilo-batches_64) 
  Detection layer: 139 - type = 28 
  Detection layer: 150 - type = 28 
  Detection layer: 161 - type = 28 
-/home/nkkar/senior-design/circuit-recognition-algorithm/circuit4.png: Predicted in 21945.861000 milli-seconds.
-Resistor: 100%	(left_x:  169   top_y:   64   width:   20   height:   42)
-Resistor: 100%	(left_x:  244   top_y:   64   width:   19   height:   43)
-Resistor: 100%	(left_x:  318   top_y:   65   width:   21   height:   41)
+/home/nkkar/senior-design/circuit-recognition-algorithm/test_pictures/handwritten/0525_wont_work.jpg: Predicted in 26815.428000 milli-seconds.
+dc : 99%	(left_x:   80   top_y:  109   width:   67   height:   56)
+Resistor: 100%	(left_x:  146   top_y:   44   width:   90   height:   28)
+Resistor: 100%	(left_x:  168   top_y:  196   width:   82   height:   29)
+Resistor: 100%	(left_x:  253   top_y:  105   width:   30   height:   90)
+Resistor: 100%	(left_x:  349   top_y:   96   width:   31   height:   75)
+Resistor: 99%	(left_x:  395   top_y:   42   width:   86   height:   24)
+Resistor: 98%	(left_x:  409   top_y:  236   width:   58   height:   16)
+Resistor: 100%	(left_x:  411   top_y:  159   width:   55   height:   21)
+Resistor: 97%	(left_x:  505   top_y:   90   width:   28   height:   79)
